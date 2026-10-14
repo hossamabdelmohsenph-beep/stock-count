@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stock Count</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f7fb;color:#1f2a44;font-family:Tahoma,Arial,sans-serif;font-size:16px;-webkit-text-size-adjust:100%}
+.wrap{max-width:720px;margin:0 auto;padding:16px}
+.head{background:linear-gradient(120deg,#1e3f8a,#2060b0);color:#fff;border-radius:14px;padding:18px 20px}
+.head h1{margin:0 0 4px;font-size:21px}
+.head p{margin:0;opacity:.92;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.chip{background:#fff;border:1px solid #e1e8f5;border-radius:999px;padding:6px 12px;font-size:14px}
+.chip b{color:#1e3f8a}
+.item{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(30,63,138,.12)}
+.desc{font-size:16px;font-weight:bold;line-height:1.5;word-break:break-word;margin-bottom:10px}
+.meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.code{font-family:monospace;font-size:14px;background:#eef3fb;padding:5px 9px;border-radius:6px;direction:ltr}
+.sysq{flex:1;font-size:15px;color:#555;min-width:90px}
+.qty{width:130px;height:50px;font-size:20px;text-align:center;border:2px solid #c9d6ea;border-radius:10px;padding:0 8px;background:#fff}
+.qty:focus{outline:none;border-color:#2060b0;background:#f5f9ff}
+.note{font-size:13px;color:#666;margin:6px 2px 14px}
+.warn{display:none;background:#fdecea;color:#b00020;border-radius:8px;padding:10px;margin-bottom:10px;font-size:14px}
+.bar{position:sticky;bottom:0;background:#f4f7fb;padding:10px 0 14px}
+button.go{width:100%;height:54px;border:0;border-radius:12px;background:#1e8a6e;color:#fff;font-size:18px;font-weight:bold;cursor:pointer}
+button.go:disabled{opacity:.6}
+.msg{background:#fff;border-radius:14px;padding:26px 18px;text-align:center;box-shadow:0 1px 3px rgba(30,63,138,.12);margin-top:16px}
+.ok-ic{font-size:60px;line-height:1.1}
+.msg h2{color:#1e8a6e;margin:6px 0}
+.err h2{color:#b00020}
+.card{background:#fff;border-radius:12px;overflow:auto;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:14px;text-align:left}
+th{background:#eef3fb;color:#1e3f8a;padding:8px}
+td{padding:8px;border-top:1px solid #e1e8f5;vertical-align:top}
+.pos{color:#1b6e3a;font-weight:bold}
+.neg{color:#b00020;font-weight:bold}
+h3{color:#1e3f8a;margin:16px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loading" class="msg"><p>Loading...</p></div>
+
+  <div id="error" class="msg err" style="display:none">
+    <div class="ok-ic">⚠️</div>
+    <h2>Invalid or expired link</h2>
+    <p>Please ask the branch manager for a new link.</p>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="head"><h1>Stock Count</h1><p id="who"></p></div>
+    <div class="chips">
+      <span class="chip">Items: <b id="cnt"></b></span>
+      <span class="chip">Date: <b id="dt"></b></span>
+      <span class="chip">Time: <b id="tm"></b></span>
+    </div>
+    <form id="f">
+      <div id="list"></div>
+      <p class="note">Leave blank if the item was not counted. Enter 0 if it is out of stock.</p>
+      <div id="warn" class="warn"></div>
+      <div class="bar"><button class="go" id="sb" type="submit">Submit count</button></div>
+    </form>
+  </div>
+
+  <div id="done" class="msg ok" style="display:none"></div>
+</div>
+
+<script>
+// Paste your Apps Script Web App URL (ends with /exec) between the quotes.
+var SCRIPT_URL = 'PASTE_APPS_SCRIPT_URL_HERE';
+
+var token = new URLSearchParams(location.search).get('t');
+
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function warn(t) { var w = $('warn'); w.textContent = t; w.style.display = 'block'; }
+
+function fail() {
+  $('loading').style.display = 'none';
+  $('error').style.display = 'block';
+}
+
+function load() {
+  if (!token || SCRIPT_URL.indexOf('PASTE_') === 0) { fail(); return; }
+  fetch(SCRIPT_URL + '?format=json&t=' + encodeURIComponent(token))
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j || !j.ok) { fail(); return; }
+      render(j);
+    })
+    .catch(fail);
+}
+
+function render(j) {
+  var items = j.items || [];
+  var now = new Date();
+  $('loading').style.display = 'none';
+  $('app').style.display = 'block';
+  $('who').textContent = (j.name || '') + ' · Al-Mubahij Pharmacy 7811';
+  $('cnt').textContent = items.length;
+  $('dt').textContent = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  $('tm').textContent = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
+
+  var html = '';
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    html += '<div class="item">' +
+      '<div class="desc">' + esc(it.desc) + '</div>' +
+      '<div class="meta">' +
+        '<span class="code">' + esc(it.code) + '</span>' +
+        '<span class="sysq">System: <b>' + esc(it.sys) + '</b></span>' +
+        '<input class="qty" type="number" inputmode="numeric" min="0" step="1" placeholder="Actual">' +
+      '</div></div>';
+  }
+  $('list').innerHTML = html;
+  $('f').addEventListener('submit', function (ev) { submitForm(ev, j, items); });
+}
+
+function submitForm(ev, j, items) {
+  ev.preventDefault();
+  var inputs = document.querySelectorAll('.qty');
+  var body = new URLSearchParams();
+  body.append('action', 'save');
+  body.append('name', j.name || '');
+  body.append('n', items.length);
+
+  var saved = 0, diffCount = 0, rows = '';
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    body.append('code_' + i, it.code);
+    body.append('desc_' + i, it.desc);
+    body.append('sys_' + i, it.sys);
+    var v = inputs[i].value.trim();
+    if (v === '') continue;
+    saved++;
+    body.append('qty_' + i, v);
+    var sys = Number(it.sys) || 0;
+    var act = Number(v);
+    var d = act - sys;
+    if (d !== 0) {
+      diffCount++;
+      rows += '<tr><td>' + esc(it.code) + '</td><td>' + esc(it.desc) + '</td><td>' + sys + '</td><td>' + act +
+        '</td><td class="' + (d > 0 ? 'pos' : 'neg') + '">' + (d > 0 ? '+' : '') + d + '</td></tr>';
+    }
+  }
+
+  if (!saved) { warn('Enter a quantity for at least one item (use 0 if out of stock).'); return; }
+  $('warn').style.display = 'none';
+
+  var btn = $('sb');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: body })
+    .then(function () {
+      $('f').style.display = 'none';
+      document.querySelector('.chips').style.display = 'none';
+      var done = $('done');
+      done.innerHTML = '<div class="ok-ic">✅</div><h2>Thank you! 🎉</h2>' +
+        '<p>Your count was submitted. ' + saved + ' item(s) saved.</p>' +
+        (diffCount
+          ? '<h3>Differences: ' + diffCount + '</h3><div class="card"><table><thead><tr><th>Code</th><th>Item</th><th>System</th><th>Actual</th><th>Diff</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+          : '<p>No differences found 🙏</p>');
+      done.style.display = 'block';
+      window.scrollTo(0, 0);
+    })
+    .catch(function () {
+      btn.disabled = false;
+      btn.textContent = 'Submit count';
+      warn('Could not send. Check your internet connection and try again.');
+    });
+}
+
+load();
+</script>
+</body>
+</html>
