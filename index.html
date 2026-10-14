@@ -58,7 +58,7 @@ h3{color:#1e3f8a;margin:16px 0 0}
     </div>
     <form id="f">
       <div id="list"></div>
-      <p class="note">Leave blank if the item was not counted. Enter 0 if it is out of stock.</p>
+      <p class="note">Every item is required. Enter 0 if it is out of stock.</p>
       <div id="warn" class="warn"></div>
       <div class="bar"><button class="go" id="sb" type="submit">Submit count</button></div>
     </form>
@@ -131,7 +131,7 @@ function render(j) {
       '<div class="meta">' +
         '<span class="code">' + esc(it.code) + '</span>' +
         '<span class="sysq">System: <b>' + esc(it.sys) + '</b></span>' +
-        '<input class="qty" type="number" inputmode="numeric" min="0" step="1" placeholder="Actual">' +
+        '<input class="qty" type="number" inputmode="numeric" min="0" step="1" placeholder="Actual" required>' +
       '</div></div>';
   }
   $('list').innerHTML = html;
@@ -166,7 +166,17 @@ function submitForm(ev, j, items) {
     }
   }
 
-  if (!saved) { warn('Enter a quantity for at least one item (use 0 if out of stock).'); return; }
+  var missing = [];
+  for (var k = 0; k < inputs.length; k++) {
+    if (inputs[k].value.trim() === '') { missing.push(k); inputs[k].style.borderColor = '#b00020'; }
+    else { inputs[k].style.borderColor = ''; }
+  }
+  if (missing.length) {
+    warn('Please enter a quantity for all ' + inputs.length + ' items (0 if out of stock). Missing: ' + missing.length);
+    inputs[missing[0]].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  $('warn').style.display = 'none';
   $('warn').style.display = 'none';
 
   var btn = $('sb');
