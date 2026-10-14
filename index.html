@@ -69,9 +69,20 @@ h3{color:#1e3f8a;margin:16px 0 0}
 
 <script>
 // Paste your Apps Script Web App URL (ends with /exec) between the quotes.
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIp7AuI9QdwC1o3thDQpyzPL1Luh4n7sh-H-R4HrjCZ0ybMGwKIYH_ReK1Iioxf5ZKjQ/exec';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIp7AuI9QdwC1o3thDQpyzPL1Luh4n7sh-H-R4HrjCZ0ybMGwKIYH_ReK1IioxF5ZKjQ/exec';
 
-var token = new URLSearchParams(location.search).get('t');
+var params = new URLSearchParams(location.search);
+var token = params.get('t');
+var dParam = params.get('d');
+
+// Decode base64url JSON (UTF-8) from the ?d= link used by WhatsApp
+function decodeD(d) {
+  var b = d.replace(/-/g, '+').replace(/_/g, '/');
+  while (b.length % 4) b += '=';
+  var bin = atob(b);
+  var bytes = Uint8Array.from(bin, function (c) { return c.charCodeAt(0); });
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
 
 function $(id) { return document.getElementById(id); }
 function esc(s) {
@@ -87,6 +98,11 @@ function fail() {
 }
 
 function load() {
+  if (dParam) {
+    try { render({ ok: true, name: decodeD(dParam).name, items: decodeD(dParam).items }); }
+    catch (err) { fail(); }
+    return;
+  }
   if (!token || SCRIPT_URL.indexOf('PASTE_') === 0) { fail(); return; }
   fetch(SCRIPT_URL + '?format=json&t=' + encodeURIComponent(token))
     .then(function (r) { return r.json(); })
