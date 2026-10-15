@@ -68,14 +68,13 @@ h3{color:#1e3f8a;margin:16px 0 0}
 </div>
 
 <script>
-// Paste your Apps Script Web App URL (ends with /exec) between the quotes.
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyQaeVO04fJK0rbNvKe2HXE881wXBBvlZPyWI6xN6Gh4mcDomDzWNUCGtfVw4ruFGD/exec';
 
 var params = new URLSearchParams(location.search);
 var token = params.get('t');
 var dParam = params.get('d');
 
-// Decode base64url JSON (UTF-8) from the ?d= link used by WhatsApp
+// Decode base64url JSON (UTF-8) from the ?d= link
 function decodeD(d) {
   var b = d.replace(/-/g, '+').replace(/_/g, '/');
   while (b.length % 4) b += '=';
@@ -97,16 +96,62 @@ function fail() {
   $('error').style.display = 'block';
 }
 
+// Draft: keep typed quantities on this browser if the page reloads
+function draftKey() { return 'stockDraft_' + location.search; }
+function saveDraft() {
+  try {
+    var vals = Array.prototype.map.call(document.querySelectorAll('.qty'), function (x) { return x.value; });
+    localStorage.setItem(draftKey(), JSON.stringify(vals));
+  } catch (e) {}
+}
+function restoreDraft() {
+  try {
+    var vals = JSON.parse(localStorage.getItem(draftKey()) || '[]');
+    Array.prototype.forEach.call(document.querySelectorAll('.qty'), function (x, i) {
+      if (vals[i] !== undefined) x.value = vals[i];
+    });
+  } catch (e) {}
+}
+
+// Already submitted: show the results only (read-only)
+function showResults(j) {
+  $('loading').style.display = 'none';
+  var items = j.items || [];
+  var act = j.actual || [];
+  var rows = '';
+  var diffs = 0;
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var a = act[i];
+    var sys = Number(it.sys) || 0;
+    var diffTxt = '', cls = '';
+    if (a !== '' && a !== undefined && a !== null) {
+      var d = Number(a) - sys;
+      diffTxt = (d > 0 ? '+' : '') + d;
+      cls = d > 0 ? 'pos' : (d < 0 ? 'neg' : '');
+      if (d !== 0) diffs++;
+    }
+    rows += '<tr><td>' + esc(it.code) + '</td><td>' + esc(it.desc) + '</td><td>' + esc(it.sys) +
+      '</td><td>' + esc(a) + '</td><td class="' + cls + '">' + diffTxt + '</td></tr>';
+  }
+  $('done').innerHTML = '<div class="ok-ic">✅</div><h2>Count submitted</h2>' +
+    '<p>' + esc(j.name || '') + ' · ' + items.length + ' items · differences: ' + diffs + '</p>' +
+    '<div class="card"><table><thead><tr><th>Code</th><th>Item</th><th>System</th><th>Actual</th><th>Diff</th></tr></thead><tbody>' +
+    rows + '</tbody></table></div>';
+  $('done').style.display = 'block';
+}
+
 function load() {
   if (dParam) {
-    try { render({ ok: true, name: decodeD(dParam).name, items: decodeD(dParam).items }); }
+    try { var data = decodeD(dParam); render({ ok: true, name: data.name, items: data.items }); }
     catch (err) { fail(); }
     return;
   }
-  if (!token || SCRIPT_URL.indexOf('PASTE_') === 0) { fail(); return; }
+  if (!token) { fail(); return; }
   fetch(SCRIPT_URL + '?format=json&t=' + encodeURIComponent(token))
     .then(function (r) { return r.json(); })
     .then(function (j) {
+      if (j && j.used) { showResults(j); return; }
       if (!j || !j.ok) { fail(); return; }
       render(j);
     })
@@ -135,6 +180,8 @@ function render(j) {
       '</div></div>';
   }
   $('list').innerHTML = html;
+  restoreDraft();
+  $('list').addEventListener('input', saveDraft);
   $('f').addEventListener('submit', function (ev) { submitForm(ev, j, items); });
 }
 
@@ -145,6 +192,7 @@ function submitForm(ev, j, items) {
   body.append('action', 'save');
   body.append('name', j.name || '');
   body.append('n', items.length);
+  if (token) body.append('t', token);
 
   var saved = 0, diffCount = 0, rows = '';
   for (var i = 0; i < items.length; i++) {
@@ -177,7 +225,6 @@ function submitForm(ev, j, items) {
     return;
   }
   $('warn').style.display = 'none';
-  $('warn').style.display = 'none';
 
   var btn = $('sb');
   btn.disabled = true;
@@ -185,6 +232,7 @@ function submitForm(ev, j, items) {
 
   fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: body })
     .then(function () {
+      try { localStorage.removeItem(draftKey()); } catch (e) {}
       $('f').style.display = 'none';
       document.querySelector('.chips').style.display = 'none';
       var done = $('done');
