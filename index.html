@@ -226,31 +226,48 @@ function submitForm(ev, j, items) {
   }
   $('warn').style.display = 'none';
 
-  var btn = $('sb');
-  btn.disabled = true;
-  btn.textContent = 'Sending...';
+  // Show the result right away; send in the background (no waiting for the server)
+  try { localStorage.removeItem(draftKey()); } catch (e) {}
+  $('f').style.display = 'none';
+  document.querySelector('.chips').style.display = 'none';
+  var done = $('done');
+  done.innerHTML = '<div class="ok-ic">✅</div><h2>Thank you! 🎉</h2>' +
+    '<p>Your count was submitted. ' + saved + ' item(s) saved.</p>' +
+    (diffCount
+      ? '<h3>Differences: ' + diffCount + '</h3><div class="card"><table><thead><tr><th>Code</th><th>Item</th><th>System</th><th>Actual</th><th>Diff</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<p>No differences found 🙏</p>');
+  done.style.display = 'block';
+  window.scrollTo(0, 0);
 
-  fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: body })
-    .then(function () {
-      try { localStorage.removeItem(draftKey()); } catch (e) {}
-      $('f').style.display = 'none';
-      document.querySelector('.chips').style.display = 'none';
-      var done = $('done');
-      done.innerHTML = '<div class="ok-ic">✅</div><h2>Thank you! 🎉</h2>' +
-        '<p>Your count was submitted. ' + saved + ' item(s) saved.</p>' +
-        (diffCount
-          ? '<h3>Differences: ' + diffCount + '</h3><div class="card"><table><thead><tr><th>Code</th><th>Item</th><th>System</th><th>Actual</th><th>Diff</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
-          : '<p>No differences found 🙏</p>');
-      done.style.display = 'block';
-      window.scrollTo(0, 0);
-    })
-    .catch(function () {
-      btn.disabled = false;
-      btn.textContent = 'Submit count';
-      warn('Could not send. Check your internet connection and try again.');
-    });
+  sendWithRetry(body.toString(), 4).catch(function () {
+    // Still failing: keep it on this device and retry on next open
+    try { localStorage.setItem('pendingSend_' + location.search, body.toString()); } catch (e) {}
+  });
 }
 
+function sendWithRetry(payload, tries) {
+  return fetch(SCRIPT_URL, {
+    method: 'POST', mode: 'no-cors', keepalive: true,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: payload
+  }).catch(function (err) {
+    if (tries <= 1) throw err;
+    return new Promise(function (r) { setTimeout(r, 2000); })
+      .then(function () { return sendWithRetry(payload, tries - 1); });
+  });
+}
+
+// Resend anything that failed last time on this device
+function resendPending() {
+  try {
+    var key = 'pendingSend_' + location.search;
+    var p = localStorage.getItem(key);
+    if (!p) return;
+    sendWithRetry(p, 3).then(function () { localStorage.removeItem(key); }).catch(function () {});
+  } catch (e) {}
+}
+
+resendPending();
 load();
 </script>
 </body>
