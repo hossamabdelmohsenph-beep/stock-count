@@ -113,7 +113,7 @@ function restoreDraft() {
   } catch (e) {}
 }
 
-// Already submitted: show the results only (read-only)
+// Already submitted: final result page (read-only), differences only
 function showResults(j) {
   $('loading').style.display = 'none';
   var items = j.items || [];
@@ -123,25 +123,30 @@ function showResults(j) {
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
     var a = act[i];
+    if (a === '' || a === undefined || a === null) continue;
     var sys = Number(it.sys) || 0;
-    var diffTxt = '', cls = '';
-    if (a !== '' && a !== undefined && a !== null) {
-      var d = Number(a) - sys;
-      diffTxt = (d > 0 ? '+' : '') + d;
-      cls = d > 0 ? 'pos' : (d < 0 ? 'neg' : '');
-      if (d !== 0) diffs++;
-    }
+    var d = Number(a) - sys;
+    if (d === 0) continue;
+    diffs++;
     rows += '<tr><td>' + esc(it.code) + '</td><td>' + esc(it.desc) + '</td><td>' + esc(it.sys) +
-      '</td><td>' + esc(a) + '</td><td class="' + cls + '">' + diffTxt + '</td></tr>';
+      '</td><td>' + esc(a) + '</td><td class="' + (d > 0 ? 'pos' : 'neg') + '">' + (d > 0 ? '+' : '') + d + '</td></tr>';
   }
-  $('done').innerHTML = '<div class="ok-ic">✅</div><h2>Count submitted</h2>' +
+  if ($('f')) $('f').style.display = 'none';
+  var chips = document.querySelector('.chips');
+  if (chips) chips.style.display = 'none';
+  $('done').innerHTML = '<div class="ok-ic">✅</div><h2>Thank you! 🎉</h2>' +
     '<p>' + esc(j.name || '') + ' · ' + items.length + ' items · differences: ' + diffs + '</p>' +
-    '<div class="card"><table><thead><tr><th>Code</th><th>Item</th><th>System</th><th>Actual</th><th>Diff</th></tr></thead><tbody>' +
-    rows + '</tbody></table></div>';
+    (diffs
+      ? '<h3>Differences</h3><div class="card"><table><thead><tr><th>Code</th><th>Item</th><th>System</th><th>Actual</th><th>Diff</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<p>No differences found 🙏</p>');
   $('done').style.display = 'block';
 }
 
 function load() {
+  try {
+    var sub = JSON.parse(localStorage.getItem('submitted_' + location.search) || 'null');
+    if (sub && sub.items) { showResults(sub); return; }
+  } catch (e) {}
   if (dParam) {
     try { var data = decodeD(dParam); render({ ok: true, name: data.name, items: data.items }); }
     catch (err) { fail(); }
@@ -239,6 +244,12 @@ function submitForm(ev, j, items) {
       : '<p>No differences found 🙏</p>');
   done.style.display = 'block';
   window.scrollTo(0, 0);
+
+  try {
+    var acts = [];
+    for (var q = 0; q < inputs.length; q++) acts.push(inputs[q].value.trim());
+    localStorage.setItem('submitted_' + location.search, JSON.stringify({ name: j.name || '', items: items, actual: acts }));
+  } catch (e) {}
 
   sendWithRetry(body.toString(), 4).catch(function () {
     // Still failing: keep it on this device and retry on next open
