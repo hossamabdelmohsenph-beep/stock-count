@@ -46,7 +46,8 @@
   <div style="margin-top:12px"><input type="search" id="fQ" placeholder="Search by item name or code..."></div>
 
   <div class="filters">
-    <div><label>Date</label><input type="date" id="fDate"></div>
+    <div><label>From</label><input type="date" id="fFrom"></div>
+    <div><label>To</label><input type="date" id="fTo"></div>
     <div><label>Division</label><select id="fDiv"><option value="">All</option></select></div>
     <div><label>Category</label><select id="fCat"><option value="">All</option></select></div>
     <div><label>Brand</label><select id="fBrand"><option value="">All</option></select></div>
@@ -60,6 +61,8 @@
       </select>
     </div>
   </div>
+
+  <button class="btn" id="allDates" style="margin:0 0 12px">All dates</button>
 
   <div class="kpis">
     <div class="kpi"><b id="kC">0</b><span>Items counted</span></div>
@@ -89,6 +92,11 @@ function esc(s) {
 function todayRiyadh() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
+function inRange(d) {
+  var f = $('fFrom').value, t = $('fTo').value, x = String(d).slice(0, 10);
+  return (!f || x >= f) && (!t || x <= t);
+}
+
 function unique(arr) {
   return arr.filter(function (v, i, a) { return a.indexOf(v) === i; }).sort();
 }
@@ -96,10 +104,9 @@ function unique(arr) {
 // Rows that match the date, the search box and every selection BEFORE this filter
 function baseFor(id) {
   var q = $('fQ').value.trim().toLowerCase();
-  var date = $('fDate').value;
   var before = SEL.slice(0, SEL.indexOf(id));
   return ALL.filter(function (r) {
-    if (date && r.date.slice(0, 10) !== date) return false;
+    if (!inRange(r.date)) return false;
     if (q && (r.item + ' ' + r.code).toLowerCase().indexOf(q) < 0) return false;
     for (var i = 0; i < before.length; i++) {
       var v = $(before[i]).value;
@@ -127,12 +134,11 @@ function refillAll(fromId) {
 }
 
 function render() {
-  var date = $('fDate').value;
   var q = $('fQ').value.trim().toLowerCase();
   var type = $('fType').value;
 
   var base = ALL.filter(function (r) {
-    if (date && r.date.slice(0, 10) !== date) return false;
+    if (!inRange(r.date)) return false;
     if (q && (r.item + ' ' + r.code).toLowerCase().indexOf(q) < 0) return false;
     for (var i = 0; i < SEL.length; i++) {
       var v = $(SEL[i]).value;
@@ -193,10 +199,12 @@ function load() {
 SEL.forEach(function (id) {
   $(id).addEventListener('change', function () { refillAll(id); render(); });
 });
-['fDate', 'fType'].forEach(function (id) { $(id).addEventListener('change', function () { refillAll(null); render(); }); });
+['fFrom', 'fTo', 'fType'].forEach(function (id) { $(id).addEventListener('change', function () { refillAll(null); render(); }); });
+$('allDates').addEventListener('click', function () { $('fFrom').value = ''; $('fTo').value = ''; refillAll(null); render(); });
 $('fQ').addEventListener('input', function () { refillAll(null); render(); });
 $('reload').addEventListener('click', load);
-$('fDate').value = todayRiyadh();
+$('fFrom').value = todayRiyadh();
+$('fTo').value = todayRiyadh();
 load();
 setInterval(load, 60000);
 </script>
