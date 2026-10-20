@@ -205,6 +205,8 @@ function submitForm(ev, j, items) {
     body.append('code_' + i, it.code);
     body.append('desc_' + i, it.desc);
     body.append('div_' + i, it.div || '');
+    body.append('cat_' + i, it.cat || '');
+    body.append('brand_' + i, it.brand || '');
     body.append('sys_' + i, it.sys);
     var v = inputs[i].value.trim();
     if (v === '') continue;

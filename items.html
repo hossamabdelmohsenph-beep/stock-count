@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Items Follow-up</title>
+<style>
+  :root { --bg:#f4f6fa; --card:#ffffff; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --head:#1e3a8a; --short:#b45309; --over:#1e8a6e; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#0f172a; --card:#1e293b; --ink:#e5e7eb; --muted:#94a3b8; --line:#334155; --head:#1e40af; --short:#fbbf24; --over:#34d399; }
+  }
+  :root[data-theme="dark"] { --bg:#0f172a; --card:#1e293b; --ink:#e5e7eb; --muted:#94a3b8; --line:#334155; --head:#1e40af; --short:#fbbf24; --over:#34d399; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family: Tahoma, Arial, sans-serif; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 14px; }
+  .top { background: var(--head); color:#fff; border-radius: 14px; padding: 14px 16px; }
+  .top h1 { margin:0 0 2px; font-size: 18px; }
+  .top small { opacity:.85; }
+  .filters { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin: 12px 0; }
+  .filters label { font-size: 12px; color: var(--muted); display:block; margin-bottom:3px; }
+  select, input { width:100%; padding:9px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); font-size:14px; }
+  .kpis { display:grid; grid-template-columns: repeat(2,1fr); gap:8px; }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center; }
+  .kpi b { display:block; font-size:22px; }
+  .kpi span { color:var(--muted); font-size:12px; }
+  .sec { font-weight:bold; margin: 16px 0 8px; }
+  .item { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+  .item .d { font-size:14px; font-weight:bold; }
+  .item .m { font-size:12px; color:var(--muted); margin-top:4px; display:flex; flex-wrap:wrap; gap:8px; }
+  .gap { font-weight:bold; }
+  .short { color: var(--short); }
+  .over { color: var(--over); }
+  .empty { text-align:center; color:var(--muted); padding: 24px 0; }
+  .foot { text-align:center; color:var(--muted); font-size:12px; margin: 14px 0; }
+  .btn { width:100%; padding:10px; border:0; border-radius:10px; background:var(--head); color:#fff; font-size:14px; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Items Follow-up · Al-Mubahij 7811</h1>
+    <small id="upd">Loading...</small>
+  </div>
+
+  <div style="margin-top:12px"><input type="search" id="fQ" placeholder="Search by item name or code..."></div>
+
+  <div class="filters">
+    <div><label>Date</label><input type="date" id="fDate"></div>
+    <div><label>Division</label><select id="fDiv"><option value="">All</option></select></div>
+    <div><label>Category</label><select id="fCat"><option value="">All</option></select></div>
+    <div><label>Brand</label><select id="fBrand"><option value="">All</option></select></div>
+    <div><label>Person</label><select id="fPerson"><option value="">All</option></select></div>
+    <div><label>Difference</label>
+      <select id="fType">
+        <option value="">All</option>
+        <option value="short">Shortage only</option>
+        <option value="over">Surplus only</option>
+        <option value="same">Matching</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><b id="kC">0</b><span>Items counted</span></div>
+    <div class="kpi"><b id="kS" class="short">0</b><span>Shortage (items)</span></div>
+    <div class="kpi"><b id="kO" class="over">0</b><span>Surplus (items)</span></div>
+    <div class="kpi"><b id="kN">0</b><span>Net difference (units)</span></div>
+  </div>
+
+  <div class="sec">Details</div>
+  <div id="list"></div>
+  <button class="btn" id="reload">Refresh</button>
+  <div class="foot">Auto-refreshes every minute</div>
+</div>
+
+<script>
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyQaeVO04fJK0rbNvKe2HXE881wXBBvlZPyWI6xN6Gh4mcDomDzWNUCGtfVw4ruFGD/exec';
+var ALL = [];
+var SEL = ['fDiv', 'fCat', 'fBrand', 'fPerson'];           // cascade order
+var KEY = { fDiv: 'div', fCat: 'cat', fBrand: 'brand', fPerson: 'person' };
+
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function todayRiyadh() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+function unique(arr) {
+  return arr.filter(function (v, i, a) { return a.indexOf(v) === i; }).sort();
+}
+
+// Rows that match the date, the search box and every selection BEFORE this filter
+function baseFor(id) {
+  var q = $('fQ').value.trim().toLowerCase();
+  var date = $('fDate').value;
+  var before = SEL.slice(0, SEL.indexOf(id));
+  return ALL.filter(function (r) {
+    if (date && r.date.slice(0, 10) !== date) return false;
+    if (q && (r.item + ' ' + r.code).toLowerCase().indexOf(q) < 0) return false;
+    for (var i = 0; i < before.length; i++) {
+      var v = $(before[i]).value;
+      if (v && r[KEY[before[i]]] !== v) return false;
+    }
+    return true;
+  });
+}
+
+// Refill one dropdown from the rows that match the earlier selections
+function refill(id) {
+  var sel = $(id);
+  var cur = sel.value;
+  var vals = unique(baseFor(id).map(function (r) { return r[KEY[id]]; }).filter(Boolean));
+  var label = sel.options[0].text;
+  sel.innerHTML = '<option value="">' + label + '</option>' + vals.map(function (v) {
+    return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+  }).join('');
+  sel.value = vals.indexOf(cur) >= 0 ? cur : '';
+}
+
+function refillAll(fromId) {
+  var start = fromId ? SEL.indexOf(fromId) + 1 : 0;
+  for (var i = start; i < SEL.length; i++) refill(SEL[i]);
+}
+
+function render() {
+  var date = $('fDate').value;
+  var q = $('fQ').value.trim().toLowerCase();
+  var type = $('fType').value;
+
+  var base = ALL.filter(function (r) {
+    if (date && r.date.slice(0, 10) !== date) return false;
+    if (q && (r.item + ' ' + r.code).toLowerCase().indexOf(q) < 0) return false;
+    for (var i = 0; i < SEL.length; i++) {
+      var v = $(SEL[i]).value;
+      if (v && r[KEY[SEL[i]]] !== v) return false;
+    }
+    return true;
+  });
+
+  var short = 0, over = 0, net = 0;
+  base.forEach(function (r) {
+    if (r.diff < 0) short++;
+    else if (r.diff > 0) over++;
+    net += r.diff;
+  });
+  $('kC').textContent = base.length;
+  $('kS').textContent = short;
+  $('kO').textContent = over;
+  $('kN').textContent = (net > 0 ? '+' : '') + net;
+
+  var list = base.filter(function (r) {
+    if (type === 'short') return r.diff < 0;
+    if (type === 'over') return r.diff > 0;
+    if (type === 'same') return r.diff === 0;
+    return true;
+  });
+
+  list = list.slice().reverse().slice(0, 200);
+  if (!list.length) { $('list').innerHTML = '<div class="empty">No items match this filter</div>'; return; }
+
+  $('list').innerHTML = list.map(function (r) {
+    var cls = r.diff < 0 ? 'short' : (r.diff > 0 ? 'over' : '');
+    var txt = (r.diff > 0 ? '+' : '') + r.diff;
+    return '<div class="item">' +
+      '<div class="d">' + esc(r.item) + '</div>' +
+      '<div class="m"><span>' + esc(r.code) + '</span><span>' + esc(r.div) + '</span><span>' + esc(r.cat) + '</span><span>' + esc(r.brand) + '</span><span>' + esc(r.person) + '</span></div>' +
+      '<div class="m"><span>System: ' + r.sys + '</span><span>Actual: ' + r.actual + '</span>' +
+      '<span class="gap ' + cls + '">Diff: ' + txt + '</span><span>' + esc(r.date) + '</span></div>' +
+      '</div>';
+  }).join('');
+}
+
+function load() {
+  $('upd').textContent = 'Loading...';
+  fetch(SCRIPT_URL + '?format=items', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      ALL = (j.rows || []).map(function (a) {
+        return { date: a[0], person: a[1], code: a[2], item: a[3], sys: a[4], actual: a[5], diff: a[6], div: a[7], cat: a[8], brand: a[9] };
+      });
+      refillAll(null);
+      $('upd').textContent = 'Last update: ' + new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+      render();
+    })
+    .catch(function () { $('upd').textContent = 'Could not load, tap Refresh'; });
+}
+
+// Changing a dropdown narrows the ones after it, then shows the list
+SEL.forEach(function (id) {
+  $(id).addEventListener('change', function () { refillAll(id); render(); });
+});
+['fDate', 'fType'].forEach(function (id) { $(id).addEventListener('change', function () { refillAll(null); render(); }); });
+$('fQ').addEventListener('input', function () { refillAll(null); render(); });
+$('reload').addEventListener('click', load);
+$('fDate').value = todayRiyadh();
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>

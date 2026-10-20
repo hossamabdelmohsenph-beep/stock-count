@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Count Progress</title>
+<style>
+  :root { --bg:#f4f6fa; --card:#ffffff; --ink:#1f2937; --muted:#6b7280; --ok:#1e8a6e; --warn:#b45309; --line:#e5e7eb; --head:#1e3a8a; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#0f172a; --card:#1e293b; --ink:#e5e7eb; --muted:#94a3b8; --ok:#34d399; --warn:#fbbf24; --line:#334155; --head:#1e40af; }
+  }
+  :root[data-theme="dark"] { --bg:#0f172a; --card:#1e293b; --ink:#e5e7eb; --muted:#94a3b8; --ok:#34d399; --warn:#fbbf24; --line:#334155; --head:#1e40af; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family: Tahoma, Arial, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+  .top { background: var(--head); color:#fff; border-radius: 14px; padding: 18px; }
+  .top h1 { margin:0 0 4px; font-size: 20px; }
+  .top small { opacity:.85; }
+  .sum { display:grid; grid-template-columns: repeat(3,1fr); gap:10px; margin: 14px 0; }
+  .box { background:var(--card); border:1px solid var(--line); border-radius: 12px; padding: 12px; text-align:center; }
+  .box b { display:block; font-size: 22px; }
+  .box span { color: var(--muted); font-size: 13px; }
+  .person { background:var(--card); border:1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .name { font-weight: bold; font-size: 16px; }
+  .nums { color: var(--muted); font-size: 14px; }
+  .done { color: var(--ok); font-weight: bold; }
+  .left { color: var(--warn); font-weight: bold; }
+  .bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+  .bar > i { display:block; height:100%; background: var(--ok); width:0; }
+  .foot { color: var(--muted); font-size: 12px; text-align:center; margin: 14px 0; }
+  .empty { text-align:center; color: var(--muted); padding: 30px 0; }
+  .err { color:#b00020; text-align:center; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Count Progress · Al-Mubahij 7811</h1>
+    <small id="upd">Loading...</small>
+  </div>
+
+  <div class="sum">
+    <div class="box"><b id="tA">0</b><span>Assigned</span></div>
+    <div class="box"><b id="tD">0</b><span>Counted</span></div>
+    <div class="box"><b id="tR">0</b><span>Remaining</span></div>
+  </div>
+
+  <div id="list"></div>
+  <div class="foot">Auto-refreshes every minute</div>
+</div>
+
+<script>
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyQaeVO04fJK0rbNvKe2HXE881wXBBvlZPyWI6xN6Gh4mcDomDzWNUCGtfVw4ruFGD/exec';
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function render(j) {
+  var people = (j && j.people) || [];
+  var tA = 0, tD = 0, tR = 0, html = '';
+  people.forEach(function (p) {
+    tA += p.assigned; tD += p.done; tR += p.remaining;
+    var pct = p.assigned ? Math.min(100, Math.round(p.done * 100 / p.assigned)) : 0;
+    var status = p.assigned === 0 ? '<span class="nums">Not assigned</span>'
+      : (p.remaining === 0 ? '<span class="done">✅ Done</span>'
+      : '<span class="left">Left ' + p.remaining + '</span>');
+    html += '<div class="person">' +
+      '<div class="row"><span class="name">' + esc(p.name) + '</span>' + status + '</div>' +
+      '<div class="row nums"><span>Assigned: ' + p.assigned + '</span><span>Counted: ' + p.done + '</span><span>' + pct + '%</span></div>' +
+      '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+      '</div>';
+  });
+  document.getElementById('tA').textContent = tA;
+  document.getElementById('tD').textContent = tD;
+  document.getElementById('tR').textContent = tR;
+  document.getElementById('list').innerHTML = html || '<div class="empty">No count links sent yet</div>';
+  document.getElementById('upd').textContent = 'Last update: ' + (j.updated || '') + ' (Riyadh time)';
+}
+
+function load() {
+  fetch(SCRIPT_URL + '?format=progress', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(render)
+    .catch(function () {
+      document.getElementById('list').innerHTML = '<div class="err">Could not load data, try again shortly</div>';
+    });
+}
+
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
