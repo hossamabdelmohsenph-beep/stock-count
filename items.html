@@ -165,7 +165,12 @@ function render() {
     return true;
   });
 
-  list = list.slice().reverse().slice(0, 200);
+  // Biggest shortage first (Surplus view: biggest surplus first), then newest
+  list = list.slice().sort(function (x, y) {
+    var d = type === 'over' ? y.diff - x.diff : x.diff - y.diff;
+    if (d !== 0) return d;
+    return String(y.date) < String(x.date) ? -1 : 1;
+  }).slice(0, 200);
   if (!list.length) { $('list').innerHTML = '<div class="empty">No items match this filter</div>'; return; }
 
   $('list').innerHTML = list.map(function (r) {
