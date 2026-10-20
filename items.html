@@ -66,8 +66,8 @@
 
   <div class="kpis">
     <div class="kpi"><b id="kC">0</b><span>Items counted</span></div>
-    <div class="kpi"><b id="kS" class="short">0</b><span>Shortage (items)</span></div>
-    <div class="kpi"><b id="kO" class="over">0</b><span>Surplus (items)</span></div>
+    <div class="kpi" data-f="short" style="cursor:pointer"><b id="kS" class="short">0</b><span>Shortage (items)</span></div>
+    <div class="kpi" data-f="over" style="cursor:pointer"><b id="kO" class="over">0</b><span>Surplus (items)</span></div>
     <div class="kpi"><b id="kN">0</b><span>Net difference (units)</span></div>
   </div>
 
@@ -200,6 +200,14 @@ SEL.forEach(function (id) {
   $(id).addEventListener('change', function () { refillAll(id); render(); });
 });
 ['fFrom', 'fTo', 'fType'].forEach(function (id) { $(id).addEventListener('change', function () { refillAll(null); render(); }); });
+// Tap Shortage or Surplus to show only those items (tap again to clear)
+document.querySelectorAll('.kpi[data-f]').forEach(function (card) {
+  card.addEventListener('click', function () {
+    var f = card.getAttribute('data-f');
+    $('fType').value = $('fType').value === f ? '' : f;
+    render();
+  });
+});
 $('allDates').addEventListener('click', function () { $('fFrom').value = ''; $('fTo').value = ''; refillAll(null); render(); });
 $('fQ').addEventListener('input', function () { refillAll(null); render(); });
 $('reload').addEventListener('click', load);
