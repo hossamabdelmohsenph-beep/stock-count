@@ -69,7 +69,10 @@
     </div>
   </div>
 
-  <button class="btn" id="allDates" style="margin:0 0 8px">All dates</button>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px">
+    <button class="btn" id="allDates" style="margin:0">All dates</button>
+    <button class="btn" id="exp" style="margin:0;background:#1e8a6e">Export to Excel</button>
+  </div>
   <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:14px"><input type="checkbox" id="fHist" style="width:auto"> Show full history</label>
 
   <div class="kpis">
@@ -82,7 +85,6 @@
   <div class="sec">Details</div>
   <div id="list"></div>
   <button class="btn" id="reload">Refresh</button>
-  <button class="btn" id="exp" style="background:#1e8a6e">Export to Excel (CSV)</button>
   <div class="foot">Auto-refreshes every minute</div>
 </div>
 
