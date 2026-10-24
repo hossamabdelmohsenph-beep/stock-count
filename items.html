@@ -52,6 +52,13 @@
     <div><label>Category</label><select id="fCat"><option value="">All</option></select></div>
     <div><label>Brand</label><select id="fBrand"><option value="">All</option></select></div>
     <div><label>Person</label><select id="fPerson"><option value="">All</option></select></div>
+    <div><label>Request</label>
+      <select id="fReq">
+        <option value="">All</option>
+        <option value="no">Not raised</option>
+        <option value="yes">Raised</option>
+      </select>
+    </div>
     <div><label>Difference</label>
       <select id="fType">
         <option value="">All</option>
@@ -81,6 +88,7 @@
 <script>
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyQaeVO04fJK0rbNvKe2HXE881wXBBvlZPyWI6xN6Gh4mcDomDzWNUCGtfVw4ruFGD/exec';
 var ALL = [];
+var REQ = {};
 var SEL = ['fDiv', 'fCat', 'fBrand', 'fPerson'];           // cascade order
 var KEY = { fDiv: 'div', fCat: 'cat', fBrand: 'brand', fPerson: 'person' };
 
@@ -167,7 +175,10 @@ function render() {
   $('kO').textContent = over;
   $('kN').textContent = (net > 0 ? '+' : '') + net;
 
+  var reqF = $('fReq').value;
   var list = base.filter(function (r) {
+    if (reqF === 'yes' && !r.raised) return false;
+    if (reqF === 'no' && r.raised) return false;
     if (type === 'short') return r.diff < 0;
     if (type === 'over') return r.diff > 0;
     if (type === 'same') return r.diff === 0;
@@ -187,6 +198,9 @@ function render() {
     var txt = (r.diff > 0 ? '+' : '') + r.diff;
     return '<div class="item">' +
       '<div class="d">' + esc(r.item) + '</div>' +
+      (r.diff < 0 ? '<div class="m"><span>' + (r.raised ? '✅ Request raised' : '⚠ No request yet') + '</span>' +
+        '<button data-code="' + esc(r.code) + '" data-on="' + (r.raised ? '0' : '1') + '" style="margin-left:auto;padding:4px 10px;border:0;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px">' +
+        (r.raised ? 'Undo' : 'Mark raised') + '</button></div>' : '') +
       '<div class="m"><span>' + esc(r.code) + '</span><span>' + esc(r.div) + '</span><span>' + esc(r.cat) + '</span><span>' + esc(r.brand) + '</span><span>' + esc(r.person) + '</span></div>' +
       '<div class="m"><span>System: ' + r.sys + '</span><span>Actual: ' + r.actual + '</span>' +
       '<span class="gap ' + cls + '">Diff: ' + txt + '</span><span>' + esc(r.date) + '</span></div>' +
@@ -199,8 +213,9 @@ function load() {
   fetch(SCRIPT_URL + '?format=items', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (j) {
+      REQ = j.req || {};
       ALL = (j.rows || []).map(function (a) {
-        return { date: a[0], person: a[1], code: a[2], item: a[3], sys: a[4], actual: a[5], diff: a[6], div: a[7], cat: a[8], brand: a[9] };
+        return { date: a[0], person: a[1], code: a[2], item: a[3], sys: a[4], actual: a[5], diff: a[6], div: a[7], cat: a[8], brand: a[9], raised: !!REQ[a[2]] };
       });
       refillAll(null);
       $('upd').textContent = 'Last update: ' + new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
@@ -225,6 +240,26 @@ document.querySelectorAll('.kpi[data-f]').forEach(function (card) {
 $('fHist').addEventListener('change', render);
 $('allDates').addEventListener('click', function () { $('fFrom').value = ''; $('fTo').value = ''; refillAll(null); render(); });
 $('fQ').addEventListener('input', function () { refillAll(null); render(); });
+$('fReq').addEventListener('change', render);
+
+// Mark a shortage as "request raised" (or undo); saved in the Requests tab
+function setRaised(code, on) {
+  var item = '';
+  ALL.forEach(function (r) { if (r.code === code) { item = r.item; } });
+  if (on) { REQ[code] = 'yes'; } else { delete REQ[code]; }
+  ALL.forEach(function (r) { if (r.code === code) r.raised = !!on; });
+  render();
+  fetch(SCRIPT_URL, {
+    method: 'POST', mode: 'no-cors', keepalive: true,
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'request', code: code, item: item, raised: !!on })
+  }).catch(function () { alert('Could not save, check your connection'); });
+}
+document.getElementById('list').addEventListener('click', function (e) {
+  var b = e.target.closest('button[data-code]');
+  if (!b) return;
+  setRaised(b.getAttribute('data-code'), b.getAttribute('data-on') === '1');
+});
 $('reload').addEventListener('click', load);
 $('fFrom').value = todayRiyadh();
 $('fTo').value = todayRiyadh();
