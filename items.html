@@ -34,6 +34,9 @@
   .empty { text-align:center; color:var(--muted); padding: 24px 0; }
   .foot { text-align:center; color:var(--muted); font-size:12px; margin: 14px 0; }
   .btn { width:100%; padding:10px; border:0; border-radius:10px; background:var(--head); color:#fff; font-size:14px; margin-top:8px; }
+  .tbl { width:100%; border-collapse:collapse; font-size:13px; }
+  .tbl th, .tbl td { padding:6px 4px; border-bottom:1px solid var(--line); text-align:left; }
+  .tbl th { color:var(--muted); font-weight:normal; }
 </style>
 </head>
 <body>
@@ -80,7 +83,13 @@
     <div class="kpi" data-f="short" style="cursor:pointer"><b id="kS" class="short">0</b><span>Shortage (items)</span></div>
     <div class="kpi" data-f="over" style="cursor:pointer"><b id="kO" class="over">0</b><span>Surplus (items)</span></div>
     <div class="kpi"><b id="kN">0</b><span>Net difference (units)</span></div>
+    <div class="kpi"><b id="kA">0%</b><span>Count accuracy</span></div>
+    <div class="kpi"><b id="kR" class="short">0</b><span>Shortage, no request</span></div>
   </div>
+
+  <div class="sec">Dashboard</div>
+  <div class="item"><b style="font-size:13px">By division</b><div id="divTbl" style="margin-top:6px"></div></div>
+  <div class="item"><b style="font-size:13px">Daily trend (last 14 days)</b><div id="trend" style="margin-top:6px"></div></div>
 
   <div class="sec">Details</div>
   <div id="list"></div>
@@ -148,6 +157,69 @@ function refillAll(fromId) {
   for (var i = start; i < SEL.length; i++) refill(SEL[i]);
 }
 
+// All counts that match the filters (no per-item dedupe), used for the daily trend
+function matchRows() {
+  var q = $('fQ').value.trim().toLowerCase();
+  return ALL.filter(function (r) {
+    if (!inRange(r.date)) return false;
+    if (q && (r.item + ' ' + r.code).toLowerCase().indexOf(q) < 0) return false;
+    for (var i = 0; i < SEL.length; i++) {
+      var v = $(SEL[i]).value;
+      if (v && r[KEY[SEL[i]]] !== v) return false;
+    }
+    return true;
+  });
+}
+
+// Dashboard: accuracy, shortage without request, division table, daily trend
+function renderDash(base) {
+  var total = base.length;
+  var same = base.filter(function (r) { return r.diff === 0; }).length;
+  $('kA').textContent = total ? Math.round(same * 100 / total) + '%' : '0%';
+  $('kR').textContent = base.filter(function (r) { return r.diff < 0 && !r.raised; }).length;
+
+  // Division table (current count per item)
+  var g = {};
+  base.forEach(function (r) {
+    var k = r.div || '—';
+    var o = g[k] || (g[k] = { name: k, counted: 0, short: 0, over: 0 });
+    o.counted++;
+    if (r.diff < 0) o.short++;
+    if (r.diff > 0) o.over++;
+  });
+  var drows = Object.keys(g).map(function (k) { return g[k]; }).sort(function (a, b) { return b.short - a.short; });
+  $('divTbl').innerHTML = drows.length
+    ? '<table class="tbl"><tr><th>Division</th><th>Counted</th><th>Short</th><th>Surplus</th></tr>' +
+      drows.map(function (o) {
+        return '<tr><td>' + esc(o.name) + '</td><td>' + o.counted + '</td><td class="short">' + (o.short || '') + '</td><td class="over">' + (o.over || '') + '</td></tr>';
+      }).join('') + '</table>'
+    : '<div class="empty">No data</div>';
+
+  // Daily trend: shortage and surplus units per day (all counts, last 14 days)
+  var days = {};
+  matchRows().forEach(function (r) {
+    var d = String(r.date).slice(0, 10);
+    var o = days[d] || (days[d] = { short: 0, over: 0 });
+    if (r.diff < 0) o.short += -r.diff;
+    else if (r.diff > 0) o.over += r.diff;
+  });
+  var keys = Object.keys(days).sort().slice(-14);
+  if (!keys.length) { $('trend').innerHTML = '<div class="empty">No data</div>'; return; }
+  var max = 1;
+  keys.forEach(function (k) { max = Math.max(max, days[k].short, days[k].over); });
+  var W = 640, H = 150, P = 14, slot = (W - 2 * P) / keys.length, bw = Math.max(4, Math.min(14, slot / 3));
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + (H + 22) + '" width="100%">';
+  keys.forEach(function (k, i) {
+    var x = P + i * slot;
+    var hs = days[k].short / max * (H - 10), ho = days[k].over / max * (H - 10);
+    svg += '<rect x="' + x + '" y="' + (H - hs) + '" width="' + bw + '" height="' + hs + '" fill="#b45309"><title>' + k + ' short ' + days[k].short + '</title></rect>';
+    svg += '<rect x="' + (x + bw + 2) + '" y="' + (H - ho) + '" width="' + bw + '" height="' + ho + '" fill="#1e8a6e"><title>' + k + ' surplus ' + days[k].over + '</title></rect>';
+    svg += '<text x="' + x + '" y="' + (H + 16) + '" font-size="10" fill="#6b7280">' + k.slice(5) + '</text>';
+  });
+  svg += '<line x1="' + P + '" x2="' + (W - P) + '" y1="' + H + '" y2="' + H + '" stroke="#e5e7eb"/></svg>';
+  $('trend').innerHTML = svg + '<div style="font-size:12px;color:var(--muted)"><span class="short">■ Shortage units</span> &nbsp; <span class="over">■ Surplus units</span></div>';
+}
+
 function render() {
   var q = $('fQ').value.trim().toLowerCase();
   var type = $('fType').value;
@@ -180,6 +252,7 @@ function render() {
   $('kS').textContent = short;
   $('kO').textContent = over;
   $('kN').textContent = (net > 0 ? '+' : '') + net;
+  renderDash(base);
 
   var reqF = $('fReq').value;
   var list = base.filter(function (r) {
