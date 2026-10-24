@@ -62,7 +62,8 @@
     </div>
   </div>
 
-  <button class="btn" id="allDates" style="margin:0 0 12px">All dates</button>
+  <button class="btn" id="allDates" style="margin:0 0 8px">All dates</button>
+  <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:14px"><input type="checkbox" id="fHist" style="width:auto"> Show full history</label>
 
   <div class="kpis">
     <div class="kpi"><b id="kC">0</b><span>Items counted</span></div>
@@ -137,7 +138,15 @@ function render() {
   var q = $('fQ').value.trim().toLowerCase();
   var type = $('fType').value;
 
-  var base = ALL.filter(function (r) {
+  // Show each item once (latest count in the period), or every count when history is on
+  var hist = $('fHist').checked;
+  var latest = {};
+  ALL.forEach(function (r) {
+    if (!inRange(r.date)) return;
+    var cur = latest[r.code];
+    if (!cur || String(r.date) > String(cur.date)) latest[r.code] = r;
+  });
+  var base = (hist ? ALL.filter(function (r) { return inRange(r.date); }) : Object.keys(latest).map(function (k) { return latest[k]; })).filter(function (r) {
     if (!inRange(r.date)) return false;
     if (q && (r.item + ' ' + r.code).toLowerCase().indexOf(q) < 0) return false;
     for (var i = 0; i < SEL.length; i++) {
@@ -213,6 +222,7 @@ document.querySelectorAll('.kpi[data-f]').forEach(function (card) {
     render();
   });
 });
+$('fHist').addEventListener('change', render);
 $('allDates').addEventListener('click', function () { $('fFrom').value = ''; $('fTo').value = ''; refillAll(null); render(); });
 $('fQ').addEventListener('input', function () { refillAll(null); render(); });
 $('reload').addEventListener('click', load);
