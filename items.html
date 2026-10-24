@@ -199,7 +199,7 @@ function render() {
     var txt = (r.diff > 0 ? '+' : '') + r.diff;
     return '<div class="item">' +
       '<div class="d">' + esc(r.item) + '</div>' +
-      (r.diff < 0 ? '<div class="m"><span>' + (r.rq ? '✅ Request ' + esc(r.rq.no) + ' · ' + esc(r.rq.date) : (r.raised ? '✅ Request raised' : '⚠ No request yet')) + '</span>' +
+      (r.diff < 0 ? '<div class="m"><span>' + (r.rq ? '✅ ' + r.rq.list.length + (r.rq.list.length > 1 ? ' requests: ' : ' request: ') + r.rq.list.map(function (x) { return esc(x.no) + ' (' + esc(x.date) + ')'; }).join(' · ') : (r.raised ? '✅ Request raised' : '⚠ No request yet')) + '</span>' +
         (r.rq ? '' : '<button data-code="' + esc(r.code) + '" data-on="' + (r.raised ? '0' : '1') + '" style="margin-left:auto;padding:4px 10px;border:0;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px">' +
         (r.raised ? 'Undo' : 'Mark raised') + '</button>') + '</div>' : '') +
       '<div class="m"><span>' + esc(r.code) + '</span><span>' + esc(r.div) + '</span><span>' + esc(r.cat) + '</span><span>' + esc(r.brand) + '</span><span>' + esc(r.person) + '</span></div>' +
