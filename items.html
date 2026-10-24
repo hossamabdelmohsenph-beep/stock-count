@@ -82,6 +82,7 @@
   <div class="sec">Details</div>
   <div id="list"></div>
   <button class="btn" id="reload">Refresh</button>
+  <button class="btn" id="exp" style="background:#1e8a6e">Export to Excel (CSV)</button>
   <div class="foot">Auto-refreshes every minute</div>
 </div>
 
@@ -91,6 +92,7 @@ var ALL = [];
 var REQ = {};
 var RQ = {};
 var OPEN = {};
+var EXPORT = [];
 var SEL = ['fDiv', 'fCat', 'fBrand', 'fPerson'];           // cascade order
 var KEY = { fDiv: 'div', fCat: 'cat', fBrand: 'brand', fPerson: 'person' };
 
@@ -187,6 +189,7 @@ function render() {
     return true;
   });
 
+  EXPORT = list.slice(); // full filtered list for the Excel export
   // Biggest shortage first (Surplus view: biggest surplus first), then newest
   list = list.slice().sort(function (x, y) {
     var d = type === 'over' ? y.diff - x.diff : x.diff - y.diff;
@@ -285,8 +288,29 @@ document.getElementById('list').addEventListener('click', function (e) {
   if (t) { var c = t.getAttribute('data-tog'); OPEN[c] = !OPEN[c]; render(); }
 });
 $('reload').addEventListener('click', load);
-$('fFrom').value = todayRiyadh();
-$('fTo').value = todayRiyadh();
+
+// Export the currently filtered list to a CSV file (opens in Excel, Arabic-safe)
+function exportCsv() {
+  var head = ['Date', 'Person', 'Code', 'Item', 'Division', 'Category', 'Brand', 'System', 'Actual', 'Diff', 'Requests', 'Total raised'];
+  var out = EXPORT.map(function (r) {
+    var rq = r.rq ? r.rq.list : [];
+    var total = 0;
+    rq.forEach(function (x) { total += x.qty; });
+    var nos = rq.map(function (x) { return x.no + ' (' + x.date + ', qty ' + x.qty + ')'; }).join(' | ');
+    return [r.date, r.person, r.code, r.item, r.div, r.cat, r.brand, r.sys, r.actual, r.diff, nos, rq.length ? total : ''];
+  });
+  var csv = [head].concat(out).map(function (row) {
+    return row.map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(',');
+  }).join('\r\n');
+  var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'items-' + todayRiyadh() + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+$('exp').addEventListener('click', exportCsv);
 load();
 setInterval(load, 60000);
 </script>
