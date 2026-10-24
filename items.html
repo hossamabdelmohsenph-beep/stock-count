@@ -89,6 +89,7 @@
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyQaeVO04fJK0rbNvKe2HXE881wXBBvlZPyWI6xN6Gh4mcDomDzWNUCGtfVw4ruFGD/exec';
 var ALL = [];
 var REQ = {};
+var RQ = {};
 var SEL = ['fDiv', 'fCat', 'fBrand', 'fPerson'];           // cascade order
 var KEY = { fDiv: 'div', fCat: 'cat', fBrand: 'brand', fPerson: 'person' };
 
@@ -198,9 +199,9 @@ function render() {
     var txt = (r.diff > 0 ? '+' : '') + r.diff;
     return '<div class="item">' +
       '<div class="d">' + esc(r.item) + '</div>' +
-      (r.diff < 0 ? '<div class="m"><span>' + (r.raised ? '✅ Request raised' : '⚠ No request yet') + '</span>' +
-        '<button data-code="' + esc(r.code) + '" data-on="' + (r.raised ? '0' : '1') + '" style="margin-left:auto;padding:4px 10px;border:0;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px">' +
-        (r.raised ? 'Undo' : 'Mark raised') + '</button></div>' : '') +
+      (r.diff < 0 ? '<div class="m"><span>' + (r.rq ? '✅ Request ' + esc(r.rq.no) + ' · ' + esc(r.rq.date) : (r.raised ? '✅ Request raised' : '⚠ No request yet')) + '</span>' +
+        (r.rq ? '' : '<button data-code="' + esc(r.code) + '" data-on="' + (r.raised ? '0' : '1') + '" style="margin-left:auto;padding:4px 10px;border:0;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px">' +
+        (r.raised ? 'Undo' : 'Mark raised') + '</button>') + '</div>' : '') +
       '<div class="m"><span>' + esc(r.code) + '</span><span>' + esc(r.div) + '</span><span>' + esc(r.cat) + '</span><span>' + esc(r.brand) + '</span><span>' + esc(r.person) + '</span></div>' +
       '<div class="m"><span>System: ' + r.sys + '</span><span>Actual: ' + r.actual + '</span>' +
       '<span class="gap ' + cls + '">Diff: ' + txt + '</span><span>' + esc(r.date) + '</span></div>' +
@@ -214,8 +215,9 @@ function load() {
     .then(function (r) { return r.json(); })
     .then(function (j) {
       REQ = j.req || {};
+      RQ = j.rq || {};
       ALL = (j.rows || []).map(function (a) {
-        return { date: a[0], person: a[1], code: a[2], item: a[3], sys: a[4], actual: a[5], diff: a[6], div: a[7], cat: a[8], brand: a[9], raised: !!REQ[a[2]] };
+        return { date: a[0], person: a[1], code: a[2], item: a[3], sys: a[4], actual: a[5], diff: a[6], div: a[7], cat: a[8], brand: a[9], raised: !!REQ[a[2]] || !!RQ[a[2]], rq: RQ[a[2]] || null };
       });
       refillAll(null);
       $('upd').textContent = 'Last update: ' + new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
