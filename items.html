@@ -90,6 +90,7 @@ var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyQaeVO04fJK0rbNvKe2H
 var ALL = [];
 var REQ = {};
 var RQ = {};
+var OPEN = {};
 var SEL = ['fDiv', 'fCat', 'fBrand', 'fPerson'];           // cascade order
 var KEY = { fDiv: 'div', fCat: 'cat', fBrand: 'brand', fPerson: 'person' };
 
@@ -197,11 +198,31 @@ function render() {
   $('list').innerHTML = list.map(function (r) {
     var cls = r.diff < 0 ? 'short' : (r.diff > 0 ? 'over' : '');
     var txt = (r.diff > 0 ? '+' : '') + r.diff;
-    return '<div class="item">' +
-      '<div class="d">' + esc(r.item) + '</div>' +
-      (r.diff < 0 ? '<div class="m"><span>' + (r.rq ? '✅ ' + r.rq.list.length + (r.rq.list.length > 1 ? ' requests: ' : ' request: ') + r.rq.list.map(function (x) { return esc(x.no) + ' (' + esc(x.date) + ')'; }).join(' · ') : (r.raised ? '✅ Request raised' : '⚠ No request yet')) + '</span>' +
-        (r.rq ? '' : '<button data-code="' + esc(r.code) + '" data-on="' + (r.raised ? '0' : '1') + '" style="margin-left:auto;padding:4px 10px;border:0;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px">' +
-        (r.raised ? 'Undo' : 'Mark raised') + '</button>') + '</div>' : '') +
+    var rq = r.rq;
+    var open = !!OPEN[r.code];
+    var reqLine = '';
+    if (rq) {
+      var total = 0;
+      rq.list.forEach(function (x) { total += x.qty; });
+      reqLine = '<div class="m"><span>✅ ' + rq.list.length + (rq.list.length > 1 ? ' requests' : ' request') +
+        ' · Total raised: <b>' + total + '</b> units</span><span style="color:var(--head);font-weight:bold">' + (open ? '▲ hide' : '▼ details') + '</span></div>';
+    } else if (r.diff < 0) {
+      reqLine = '<div class="m"><span>' + (r.raised ? '✅ Request raised' : '⚠ No request yet') + '</span>' +
+        '<button data-code="' + esc(r.code) + '" data-on="' + (r.raised ? '0' : '1') + '" style="margin-left:auto;padding:4px 10px;border:0;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px">' +
+        (r.raised ? 'Undo' : 'Mark raised') + '</button></div>';
+    }
+    var detail = '';
+    if (rq && open) {
+      detail = '<table style="width:100%;margin-top:8px;border-collapse:collapse;font-size:13px">' +
+        '<tr style="color:var(--muted);text-align:left"><th style="padding:4px">Request No.</th><th style="padding:4px">Date</th><th style="padding:4px">Qty</th><th style="padding:4px">Status</th></tr>' +
+        rq.list.map(function (x) {
+          return '<tr style="border-top:1px solid var(--line)"><td style="padding:4px">' + esc(x.no) + '</td><td style="padding:4px">' + esc(x.date) +
+            '</td><td style="padding:4px"><b>' + x.qty + '</b></td><td style="padding:4px">' + esc(x.check) + '</td></tr>';
+        }).join('') +
+        '</table>';
+    }
+    return '<div class="item"' + (rq ? ' data-tog="' + esc(r.code) + '" style="cursor:pointer"' : '') + '>' +
+      '<div class="d">' + esc(r.item) + '</div>' + reqLine + detail +
       '<div class="m"><span>' + esc(r.code) + '</span><span>' + esc(r.div) + '</span><span>' + esc(r.cat) + '</span><span>' + esc(r.brand) + '</span><span>' + esc(r.person) + '</span></div>' +
       '<div class="m"><span>System: ' + r.sys + '</span><span>Actual: ' + r.actual + '</span>' +
       '<span class="gap ' + cls + '">Diff: ' + txt + '</span><span>' + esc(r.date) + '</span></div>' +
@@ -259,8 +280,9 @@ function setRaised(code, on) {
 }
 document.getElementById('list').addEventListener('click', function (e) {
   var b = e.target.closest('button[data-code]');
-  if (!b) return;
-  setRaised(b.getAttribute('data-code'), b.getAttribute('data-on') === '1');
+  if (b) { setRaised(b.getAttribute('data-code'), b.getAttribute('data-on') === '1'); return; }
+  var t = e.target.closest('[data-tog]');
+  if (t) { var c = t.getAttribute('data-tog'); OPEN[c] = !OPEN[c]; render(); }
 });
 $('reload').addEventListener('click', load);
 $('fFrom').value = todayRiyadh();
