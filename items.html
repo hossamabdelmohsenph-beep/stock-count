@@ -34,6 +34,11 @@
   .empty { text-align:center; color:var(--muted); padding: 24px 0; }
   .foot { text-align:center; color:var(--muted); font-size:12px; margin: 14px 0; }
   .btn { width:100%; padding:10px; border:0; border-radius:10px; background:var(--head); color:#fff; font-size:14px; margin-top:8px; }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; background:var(--line); color:var(--ink); font-weight:normal; margin-inline-start:4px; }
+  .tag-rep { background:#fde68a; color:#78350f; }
+  .tag-new { background:#fecaca; color:#7f1d1d; }
+  .tag-ok { background:#bbf7d0; color:#14532d; }
+  .item, .item .d, .item .m { -webkit-user-select:text; user-select:text; }
 </style>
 </head>
 <body>
@@ -148,7 +153,45 @@ function refillAll(fromId) {
   for (var i = start; i < SEL.length; i++) refill(SEL[i]);
 }
 
+// Status per item from its count history:
+// rep = number of days it was short; st = New shortage / Continuing / Back in shortage / Resolved
+function computeStatus() {
+  var by = {};
+  ALL.forEach(function (r) { (by[r.code] = by[r.code] || []).push(r); });
+  Object.keys(by).forEach(function (code) {
+    var arr = by[code].slice().sort(function (a, b) { return String(a.date) < String(b.date) ? -1 : 1; });
+    var days = {};
+    arr.forEach(function (r) { if (r.diff < 0) days[String(r.date).slice(0, 10)] = true; });
+    var rep = Object.keys(days).length;
+    var last = arr[arr.length - 1];
+    var prev = arr.length > 1 ? arr[arr.length - 2] : null;
+    var st = '';
+    if (last.diff < 0) {
+      if (!prev) st = 'New shortage';
+      else if (prev.diff < 0) st = 'Continuing';
+      else st = 'Back in shortage';
+    } else if (prev && prev.diff < 0) {
+      st = 'Resolved';
+    }
+    arr.forEach(function (r) { r.rep = rep; r.st = (r === last) ? st : ''; });
+  });
+}
+
+// Small tags on the card: repeated shortage, status, Raised Requests check
+function badges(r) {
+  var h = '';
+  if (r.rep >= 2) h += '<span class="tag tag-rep">Repeated shortage x' + r.rep + '</span>';
+  if (r.st) {
+    var cls = r.st === 'Resolved' ? 'tag-ok' : (r.st === 'New shortage' || r.st === 'Back in shortage' ? 'tag-new' : '');
+    h += '<span class="tag ' + cls + '">' + esc(r.st) + '</span>';
+  }
+  if (r.rq && r.rq.list[0] && r.rq.list[0].check) h += '<span class="tag">' + esc(r.rq.list[0].check) + '</span>';
+  return h;
+}
+
 function render() {
+  // Don't redraw while the person is selecting text (keeps copy working)
+  if (window.getSelection && String(window.getSelection()).length) return;
   var q = $('fQ').value.trim().toLowerCase();
   var type = $('fType').value;
 
@@ -227,8 +270,8 @@ function render() {
         '</table>';
     }
     return '<div class="item"' + (rq ? ' data-tog="' + esc(r.code) + '" style="cursor:pointer"' : '') + '>' +
-      '<div class="d">' + esc(r.item) + '</div>' + reqLine + detail +
-      '<div class="m"><span>' + esc(r.code) + '</span><span>' + esc(r.div) + '</span><span>' + esc(r.cat) + '</span><span>' + esc(r.brand) + '</span><span>' + esc(r.person) + '</span></div>' +
+      '<div class="d">' + esc(r.item) + ' ' + badges(r) + '</div>' + reqLine + detail +
+      '<div class="m"><span data-copy="' + esc(r.code) + '" style="text-decoration:underline dotted;cursor:copy">' + esc(r.code) + '</span><span>' + esc(r.div) + '</span><span>' + esc(r.cat) + '</span><span>' + esc(r.brand) + '</span><span>' + esc(r.person) + '</span></div>' +
       '<div class="m"><span>System: ' + r.sys + '</span><span>Actual: ' + r.actual + '</span>' +
       '<span class="gap ' + cls + '">Diff: ' + txt + '</span><span>' + esc(r.date) + '</span></div>' +
       '</div>';
@@ -245,6 +288,7 @@ function load() {
       ALL = (j.rows || []).map(function (a) {
         return { date: a[0], person: a[1], code: a[2], item: a[3], sys: a[4], actual: a[5], diff: a[6], div: a[7], cat: a[8], brand: a[9], raised: !!REQ[a[2]] || !!RQ[a[2]], rq: RQ[a[2]] || null };
       });
+      computeStatus();
       refillAll(null);
       $('upd').textContent = 'Last update: ' + new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
       render();
@@ -286,6 +330,15 @@ function setRaised(code, on) {
 document.getElementById('list').addEventListener('click', function (e) {
   var b = e.target.closest('button[data-code]');
   if (b) { setRaised(b.getAttribute('data-code'), b.getAttribute('data-on') === '1'); return; }
+  // Tap an item code to copy it
+  var cp = e.target.closest('[data-copy]');
+  if (cp) {
+    var code = cp.getAttribute('data-copy');
+    if (navigator.clipboard) navigator.clipboard.writeText(code).catch(function () {});
+    return;
+  }
+  // Selecting text must not toggle the card
+  if (window.getSelection && String(window.getSelection()).length) return;
   var t = e.target.closest('[data-tog]');
   if (t) { var c = t.getAttribute('data-tog'); OPEN[c] = !OPEN[c]; render(); }
 });
