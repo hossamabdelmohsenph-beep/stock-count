@@ -99,6 +99,7 @@ var ALL = [];
 var REQ = {};
 var RQ = {};
 var OPEN = {};
+var OWN = {};
 var EXPORT = [];
 var SEL = ['fDiv', 'fCat', 'fBrand', 'fPerson'];           // cascade order
 var KEY = { fDiv: 'div', fCat: 'cat', fBrand: 'brand', fPerson: 'person' };
@@ -186,6 +187,7 @@ function badges(r) {
     h += '<span class="tag ' + cls + '">' + esc(r.st) + '</span>';
   }
   if (r.rq && r.rq.list[0] && r.rq.list[0].check) h += '<span class="tag">' + esc(r.rq.list[0].check) + '</span>';
+  if (r.owner) h += '<span class="tag">Owner: ' + esc(r.owner) + '</span>';
   return h;
 }
 
@@ -284,9 +286,10 @@ function load() {
     .then(function (r) { return r.json(); })
     .then(function (j) {
       REQ = j.req || {};
+      OWN = j.owners || {};
       RQ = j.rq || {};
       ALL = (j.rows || []).map(function (a) {
-        return { date: a[0], person: a[1], code: a[2], item: a[3], sys: a[4], actual: a[5], diff: a[6], div: a[7], cat: a[8], brand: a[9], raised: !!REQ[a[2]] || !!RQ[a[2]], rq: RQ[a[2]] || null };
+        return { date: a[0], person: a[1], code: a[2], item: a[3], sys: a[4], actual: a[5], diff: a[6], div: a[7], cat: a[8], brand: a[9], raised: !!REQ[a[2]] || !!RQ[a[2]], rq: RQ[a[2]] || null, owner: OWN[a[2]] || '' };
       });
       computeStatus();
       refillAll(null);
