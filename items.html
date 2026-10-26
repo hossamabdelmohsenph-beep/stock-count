@@ -100,6 +100,7 @@ var REQ = {};
 var RQ = {};
 var OPEN = {};
 var OWN = {};
+var HIST = {};
 var EXPORT = [];
 var SEL = ['fDiv', 'fCat', 'fBrand', 'fPerson'];           // cascade order
 var KEY = { fDiv: 'div', fCat: 'cat', fBrand: 'brand', fPerson: 'person' };
@@ -174,6 +175,7 @@ function computeStatus() {
     } else if (prev && prev.diff < 0) {
       st = 'Resolved';
     }
+    HIST[code] = arr.slice().reverse(); // newest first, used by the history view
     arr.forEach(function (r) { r.rep = rep; r.st = (r === last) ? st : ''; });
   });
 }
@@ -261,9 +263,24 @@ function render() {
         '<button data-code="' + esc(r.code) + '" data-on="' + (r.raised ? '0' : '1') + '" style="margin-left:auto;padding:4px 10px;border:0;border-radius:8px;background:#1e3a8a;color:#fff;font-size:12px">' +
         (r.raised ? 'Undo' : 'Mark raised') + '</button></div>';
     }
+    // Every item can open its count history (all dates it was counted, short or not)
+    var hist2 = HIST[r.code] || [];
+    var hint = rq ? '' : '<div class="m"><span style="color:var(--head);font-weight:bold">' + (open ? '▲ hide count history' : '▼ count history (' + hist2.length + ')') + '</span></div>';
     var detail = '';
+    if (open) {
+      detail = '<div style="margin-top:8px;font-weight:bold;font-size:13px">Count history (' + hist2.length + ' counts)</div>' +
+        '<table style="width:100%;margin-top:4px;border-collapse:collapse;font-size:13px">' +
+        '<tr style="color:var(--muted);text-align:left"><th style="padding:4px">Date</th><th style="padding:4px">System</th><th style="padding:4px">Actual</th><th style="padding:4px">Diff</th></tr>' +
+        hist2.map(function (x) {
+          var c2 = x.diff < 0 ? 'short' : (x.diff > 0 ? 'over' : '');
+          return '<tr style="border-top:1px solid var(--line)"><td style="padding:4px">' + esc(x.date) + '</td><td style="padding:4px">' + x.sys +
+            '</td><td style="padding:4px">' + x.actual + '</td><td style="padding:4px" class="' + c2 + '"><b>' + (x.diff > 0 ? '+' : '') + x.diff + '</b></td></tr>';
+        }).join('') +
+        '</table>';
+    }
     if (rq && open) {
-      detail = '<table style="width:100%;margin-top:8px;border-collapse:collapse;font-size:13px">' +
+      detail += '<div style="margin-top:10px;font-weight:bold;font-size:13px">Requests</div>' +
+        '<table style="width:100%;margin-top:4px;border-collapse:collapse;font-size:13px">' +
         '<tr style="color:var(--muted);text-align:left"><th style="padding:4px">Request No.</th><th style="padding:4px">Date</th><th style="padding:4px">Qty</th><th style="padding:4px">Status</th></tr>' +
         rq.list.map(function (x) {
           return '<tr style="border-top:1px solid var(--line)"><td style="padding:4px">' + esc(x.no) + '</td><td style="padding:4px">' + esc(x.date) +
@@ -271,8 +288,8 @@ function render() {
         }).join('') +
         '</table>';
     }
-    return '<div class="item"' + (rq ? ' data-tog="' + esc(r.code) + '" style="cursor:pointer"' : '') + '>' +
-      '<div class="d">' + esc(r.item) + ' ' + badges(r) + '</div>' + reqLine + detail +
+    return '<div class="item" data-tog="' + esc(r.code) + '" style="cursor:pointer">' +
+      '<div class="d">' + esc(r.item) + ' ' + badges(r) + '</div>' + reqLine + hint + detail +
       '<div class="m"><span data-copy="' + esc(r.code) + '" style="text-decoration:underline dotted;cursor:copy">' + esc(r.code) + '</span><span>' + esc(r.div) + '</span><span>' + esc(r.cat) + '</span><span>' + esc(r.brand) + '</span><span>' + esc(r.person) + '</span></div>' +
       '<div class="m"><span>System: ' + r.sys + '</span><span>Actual: ' + r.actual + '</span>' +
       '<span class="gap ' + cls + '">Diff: ' + txt + '</span><span>' + esc(r.date) + '</span></div>' +
