@@ -39,6 +39,8 @@
   .tag-new { background:#fecaca; color:#7f1d1d; }
   .tag-ok { background:#bbf7d0; color:#14532d; }
   .tag-back { background:#fed7aa; color:#7c2d12; font-weight:bold; }
+  .tag-worse { background:#fca5a5; color:#7f1d1d; font-weight:bold; }
+  .tag-better { background:#d9f99d; color:#365314; }
   .top { box-shadow: 0 4px 12px rgba(30,58,138,.18); }
   .kpi, .item { box-shadow: 0 1px 2px rgba(0,0,0,.05); }
   .item { border-radius: 14px; padding: 12px 14px; }
@@ -191,7 +193,14 @@ function computeStatus() {
       st = 'Resolved';
     }
     HIST[code] = arr.slice().reverse(); // newest first, used by the history view
-    arr.forEach(function (r) { r.rep = rep; r.st = (r === last) ? st : ''; });
+    // Trend while still short: the shortage grew or shrank compared with the previous count
+    var trend = (last.diff < 0 && prev && prev.diff < 0) ? (last.diff < prev.diff ? 'worse' : (last.diff > prev.diff ? 'better' : '')) : '';
+    arr.forEach(function (r) {
+      r.rep = rep;
+      r.st = (r === last) ? st : '';
+      r.trend = (r === last) ? trend : '';
+      r.prevDiff = (r === last && prev) ? prev.diff : null;
+    });
   });
 }
 
@@ -203,6 +212,8 @@ function badges(r) {
     var cls = r.st === 'Resolved' ? 'tag-ok' : (r.st === 'Back in shortage' ? 'tag-back' : (r.st === 'New shortage' ? 'tag-new' : ''));
     h += '<span class="tag ' + cls + '">' + esc(r.st) + '</span>';
   }
+  if (r.trend === 'worse') h += '<span class="tag tag-worse">Shortage grew ' + r.prevDiff + ' → ' + r.diff + '</span>';
+  if (r.trend === 'better') h += '<span class="tag tag-better">Shortage reduced ' + r.prevDiff + ' → ' + r.diff + '</span>';
   if (r.rq && r.rq.list[0] && r.rq.list[0].check) h += '<span class="tag">' + esc(r.rq.list[0].check) + '</span>';
   if (r.owner) h += '<span class="tag">Owner: ' + esc(r.owner) + '</span>';
   return h;
