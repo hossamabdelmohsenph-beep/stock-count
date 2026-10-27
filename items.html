@@ -38,6 +38,7 @@
   .tag-rep { background:#fde68a; color:#78350f; }
   .tag-new { background:#fecaca; color:#7f1d1d; }
   .tag-ok { background:#bbf7d0; color:#14532d; }
+  .tag-back { background:#fed7aa; color:#7c2d12; font-weight:bold; }
   .item, .item .d, .item .m { -webkit-user-select:text; user-select:text; }
 </style>
 </head>
@@ -185,7 +186,7 @@ function badges(r) {
   var h = '';
   if (r.rep >= 2) h += '<span class="tag tag-rep">Repeated shortage x' + r.rep + '</span>';
   if (r.st) {
-    var cls = r.st === 'Resolved' ? 'tag-ok' : (r.st === 'New shortage' || r.st === 'Back in shortage' ? 'tag-new' : '');
+    var cls = r.st === 'Resolved' ? 'tag-ok' : (r.st === 'Back in shortage' ? 'tag-back' : (r.st === 'New shortage' ? 'tag-new' : ''));
     h += '<span class="tag ' + cls + '">' + esc(r.st) + '</span>';
   }
   if (r.rq && r.rq.list[0] && r.rq.list[0].check) h += '<span class="tag">' + esc(r.rq.list[0].check) + '</span>';
