@@ -20,7 +20,7 @@
   .filters { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin: 12px 0; }
   .filters label { font-size: 12px; color: var(--muted); display:block; margin-bottom:3px; }
   select, input { width:100%; padding:9px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); font-size:14px; }
-  .kpis { display:grid; grid-template-columns: repeat(2,1fr); gap:8px; }
+  .kpis { display:grid; grid-template-columns: repeat(2,1fr); gap:8px; position:sticky; top:0; z-index:5; background:var(--bg); padding:6px 0; }
   .kpi { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center; }
   .kpi b { display:block; font-size:22px; }
   .kpi span { color:var(--muted); font-size:12px; }
@@ -84,6 +84,14 @@
         <option value="Back in shortage">Back in shortage</option>
         <option value="Continuing">Continuing</option>
         <option value="Resolved">Resolved</option>
+      </select>
+    </div>
+    <div style="grid-column:1 / -1"><label>Sort by</label>
+      <select id="fSort">
+        <option value="short">Biggest shortage</option>
+        <option value="date">Newest date</option>
+        <option value="brand">Brand</option>
+        <option value="name">Item name</option>
       </select>
     </div>
   </div>
@@ -254,7 +262,17 @@ function render() {
 
   EXPORT = list.slice(); // full filtered list for the Excel export
   // Biggest shortage first (Surplus view: biggest surplus first), then newest
+  var sortF = $('fSort').value;
   list = list.slice().sort(function (x, y) {
+    if (sortF === 'date') {
+      if (String(x.date) !== String(y.date)) return String(y.date) < String(x.date) ? -1 : 1;
+    } else if (sortF === 'brand') {
+      var bc = String(x.brand).localeCompare(String(y.brand));
+      if (bc !== 0) return bc;
+    } else if (sortF === 'name') {
+      var nc = String(x.item).localeCompare(String(y.item));
+      if (nc !== 0) return nc;
+    }
     var d = type === 'over' ? y.diff - x.diff : x.diff - y.diff;
     if (d !== 0) return d;
     return String(y.date) < String(x.date) ? -1 : 1;
@@ -365,6 +383,7 @@ $('fHist').addEventListener('change', render);
 $('allDates').addEventListener('click', function () { $('fFrom').value = ''; $('fTo').value = ''; refillAll(null); render(); });
 $('fQ').addEventListener('input', function () { refillAll(null); render(); });
 $('fStat').addEventListener('change', render);
+$('fSort').addEventListener('change', render);
 
 // Mark a shortage as "request raised" (or undo); saved in the Requests tab
 function setRaised(code, on) {
