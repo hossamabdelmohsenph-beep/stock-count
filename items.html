@@ -73,6 +73,15 @@
         <option value="same">Matching</option>
       </select>
     </div>
+    <div><label>Status</label>
+      <select id="fStat">
+        <option value="">All</option>
+        <option value="New shortage">New shortage</option>
+        <option value="Back in shortage">Back in shortage</option>
+        <option value="Continuing">Continuing</option>
+        <option value="Resolved">Resolved</option>
+      </select>
+    </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px">
@@ -230,7 +239,9 @@ function render() {
   $('kN').textContent = (net > 0 ? '+' : '') + net;
 
   var reqF = $('fReq').value;
+  var statF = $('fStat').value;
   var list = base.filter(function (r) {
+    if (statF && r.st !== statF) return false;
     if (reqF === 'yes' && !r.raised) return false;
     if (reqF === 'no' && r.raised) return false;
     if (type === 'short') return r.diff < 0;
@@ -334,6 +345,7 @@ $('fHist').addEventListener('change', render);
 $('allDates').addEventListener('click', function () { $('fFrom').value = ''; $('fTo').value = ''; refillAll(null); render(); });
 $('fQ').addEventListener('input', function () { refillAll(null); render(); });
 $('fReq').addEventListener('change', render);
+$('fStat').addEventListener('change', render);
 
 // Mark a shortage as "request raised" (or undo); saved in the Requests tab
 function setRaised(code, on) {
