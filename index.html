@@ -20,6 +20,21 @@ body{margin:0;background:#f4f7fb;color:#1f2a44;font-family:Tahoma,Arial,sans-ser
 .row{display:flex;gap:12px;align-items:flex-start}
 .pic{width:72px;height:72px;flex:0 0 72px;object-fit:contain;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
 .bodyc{flex:1;min-width:0}
+.pic{cursor:zoom-in}
+#zoom{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:99;padding:16px;cursor:zoom-out}
+#zoom img{max-width:100%;max-height:88vh;background:#fff;border-radius:12px;object-fit:contain}
+@media (max-width:420px){
+  body{font-size:15px}
+  .wrap{padding:12px}
+  .head h1{font-size:19px}
+  .desc{font-size:15px;margin-bottom:8px}
+  .pic{width:60px;height:60px;flex-basis:60px}
+  .row{gap:10px}
+  .item{padding:12px}
+  .qty{width:100px;height:46px;font-size:18px}
+  .code{font-size:13px}
+  .sysq{font-size:14px}
+}
 .code{font-family:monospace;font-size:14px;background:#eef3fb;padding:5px 9px;border-radius:6px;direction:ltr}
 .sysq{flex:1;font-size:15px;color:#555;min-width:90px}
 .qty{width:130px;height:50px;font-size:20px;text-align:center;border:2px solid #c9d6ea;border-radius:10px;padding:0 8px;background:#fff}
@@ -288,6 +303,18 @@ function resendPending() {
 
 resendPending();
 load();
+// Tap a product photo to see it large; tap anywhere to close
+var zoomBox = document.createElement('div');
+zoomBox.id = 'zoom';
+zoomBox.innerHTML = '<img alt="">';
+document.body.appendChild(zoomBox);
+zoomBox.addEventListener('click', function () { zoomBox.style.display = 'none'; });
+document.getElementById('list').addEventListener('click', function (e) {
+  var p = e.target.closest && e.target.closest('img.pic');
+  if (!p) return;
+  zoomBox.firstChild.src = p.src;
+  zoomBox.style.display = 'flex';
+});
 </script>
 </body>
 </html>
