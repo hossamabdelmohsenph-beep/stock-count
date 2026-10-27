@@ -17,6 +17,9 @@ body{margin:0;background:#f4f7fb;color:#1f2a44;font-family:Tahoma,Arial,sans-ser
 .item{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(30,63,138,.12)}
 .desc{font-size:16px;font-weight:bold;line-height:1.5;word-break:break-word;margin-bottom:10px}
 .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row{display:flex;gap:12px;align-items:flex-start}
+.pic{width:72px;height:72px;flex:0 0 72px;object-fit:contain;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
+.bodyc{flex:1;min-width:0}
 .code{font-family:monospace;font-size:14px;background:#eef3fb;padding:5px 9px;border-radius:6px;direction:ltr}
 .sysq{flex:1;font-size:15px;color:#555;min-width:90px}
 .qty{width:130px;height:50px;font-size:20px;text-align:center;border:2px solid #c9d6ea;border-radius:10px;padding:0 8px;background:#fff}
@@ -176,13 +179,15 @@ function render(j) {
   var html = '';
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
-    html += '<div class="item">' +
+    // Product photo (from the Images tab), hidden automatically if the link is missing or broken
+    var pic = it.img ? '<img class="pic" src="' + esc(it.img) + '" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '';
+    html += '<div class="item"><div class="row">' + pic + '<div class="bodyc">' +
       '<div class="desc">' + esc(it.desc) + '</div>' +
       '<div class="meta">' +
         '<span class="code">' + esc(it.code) + '</span>' +
         '<span class="sysq">System: <b>' + esc(it.sys) + '</b></span>' +
         '<input class="qty" type="number" inputmode="numeric" min="0" step="1" placeholder="Actual" required>' +
-      '</div></div>';
+      '</div></div></div></div>';
   }
   $('list').innerHTML = html;
   restoreDraft();
