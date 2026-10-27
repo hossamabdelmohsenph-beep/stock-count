@@ -39,6 +39,16 @@
   .tag-new { background:#fecaca; color:#7f1d1d; }
   .tag-ok { background:#bbf7d0; color:#14532d; }
   .tag-back { background:#fed7aa; color:#7c2d12; font-weight:bold; }
+  .top { box-shadow: 0 4px 12px rgba(30,58,138,.18); }
+  .kpi, .item { box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .item { border-radius: 14px; padding: 12px 14px; }
+  .item.short { border-inline-start: 4px solid var(--short); }
+  .item.over { border-inline-start: 4px solid var(--over); }
+  .item .d { font-size: 15px; line-height: 1.4; }
+  .item .m span { white-space: nowrap; }
+  .fbox { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin: 12px 0; }
+  .fbox summary { cursor: pointer; font-weight: bold; font-size: 14px; color: var(--head); padding: 4px 0; }
+  .fbox .filters { margin: 10px 0 4px; }
   .item, .item .d, .item .m { -webkit-user-select:text; user-select:text; }
 </style>
 </head>
@@ -51,6 +61,8 @@
 
   <div style="margin-top:12px"><input type="search" id="fQ" placeholder="Search by item name or code..."></div>
 
+  <details class="fbox" open>
+  <summary>Filters</summary>
   <div class="filters">
     <div><label>From</label><input type="date" id="fFrom"></div>
     <div><label>To</label><input type="date" id="fTo"></div>
@@ -75,6 +87,7 @@
       </select>
     </div>
   </div>
+  </details>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px">
     <button class="btn" id="allDates" style="margin:0">All dates</button>
@@ -289,7 +302,7 @@ function render() {
         }).join('') +
         '</table>';
     }
-    return '<div class="item" data-tog="' + esc(r.code) + '" style="cursor:pointer">' +
+    return '<div class="item ' + cls + '" data-tog="' + esc(r.code) + '" style="cursor:pointer">' +
       '<div class="d">' + esc(r.item) + ' ' + badges(r) + '</div>' + reqLine + hint + detail +
       '<div class="m"><span data-copy="' + esc(r.code) + '" style="text-decoration:underline dotted;cursor:copy">' + esc(r.code) + '</span><span>' + esc(r.div) + '</span><span>' + esc(r.cat) + '</span><span>' + esc(r.brand) + '</span><span>' + esc(r.person) + '</span></div>' +
       '<div class="m"><span>System: ' + r.sys + '</span><span>Actual: ' + r.actual + '</span>' +
