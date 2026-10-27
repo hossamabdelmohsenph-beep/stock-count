@@ -20,7 +20,7 @@
   .filters { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin: 12px 0; }
   .filters label { font-size: 12px; color: var(--muted); display:block; margin-bottom:3px; }
   select, input { width:100%; padding:9px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); font-size:14px; }
-  .kpis { display:grid; grid-template-columns: repeat(2,1fr); gap:8px; }
+  .kpis { display:grid; grid-template-columns: repeat(2,1fr); gap:8px; position:sticky; top:0; z-index:5; background:var(--bg); padding:6px 0; }
   .kpi { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center; }
   .kpi b { display:block; font-size:22px; }
   .kpi span { color:var(--muted); font-size:12px; }
@@ -56,7 +56,7 @@
 <div class="wrap">
   <div class="top">
     <h1>Items Follow-up · Al-Mubahij 7811</h1>
-    <small id="upd">Loading...</small>
+    <small id="upd"></small>
   </div>
 
   <div style="margin-top:12px"><input type="search" id="fQ" placeholder="Search by item name or code..."></div>
@@ -330,7 +330,6 @@ function loadSaved() {
     var c = localStorage.getItem('items_cache');
     if (c) {
       applyData(JSON.parse(c));
-      $('upd').textContent = 'Showing saved data, updating...';
     }
   } catch (e) {}
 }
@@ -341,7 +340,7 @@ function load() {
     .then(function (j) {
       try { localStorage.setItem('items_cache', JSON.stringify(j)); } catch (e) {}
       applyData(j);
-      $('upd').textContent = 'Last update: ' + new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+      $('upd').textContent = '';
     })
     .catch(function () {
       $('upd').textContent = ALL.length ? 'Showing saved data (could not update)' : 'Could not load, tap Refresh';
