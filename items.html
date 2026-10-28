@@ -220,10 +220,9 @@ function badges(r) {
 }
 
 function render() {
-  // Don't redraw while the person is selecting text (keeps copy working)
-  if (window.getSelection && String(window.getSelection()).length) return;
   var q = $('fQ').value.trim().toLowerCase();
   var type = $('fType').value;
+  var statF = $('fStat').value;
 
   // Show each item once (latest count in the period), or every count when history is on
   var hist = $('fHist').checked;
@@ -236,6 +235,7 @@ function render() {
   var base = (hist ? ALL.filter(function (r) { return inRange(r.date); }) : Object.keys(latest).map(function (k) { return latest[k]; })).filter(function (r) {
     if (!inRange(r.date)) return false;
     if (q && (r.item + ' ' + r.code).toLowerCase().indexOf(q) < 0) return false;
+    if (statF && r.st !== statF) return false;
     for (var i = 0; i < SEL.length; i++) {
       var v = $(SEL[i]).value;
       if (v && r[KEY[SEL[i]]] !== v) return false;
@@ -254,9 +254,7 @@ function render() {
   $('kO').textContent = over;
   $('kN').textContent = (net > 0 ? '+' : '') + net;
 
-  var statF = $('fStat').value;
   var list = base.filter(function (r) {
-    if (statF && r.st !== statF) return false;
     if (type === 'short') return r.diff < 0;
     if (type === 'over') return r.diff > 0;
     if (type === 'same') return r.diff === 0;
@@ -345,7 +343,9 @@ function loadSaved() {
   } catch (e) {}
 }
 
-function load() {
+function load(manual) {
+  // The automatic every-minute refresh waits while the person is selecting text
+  if (!manual && window.getSelection && String(window.getSelection()).length) return;
   fetch(SCRIPT_URL + '?format=items', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (j) {
