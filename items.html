@@ -41,6 +41,7 @@
   .tag-back { background:#fed7aa; color:#7c2d12; font-weight:bold; }
   .tag-worse { background:#fca5a5; color:#7f1d1d; font-weight:bold; }
   .tag-better { background:#d9f99d; color:#365314; }
+  .tag-deliv { background:#dbeafe; color:#1e3a8a; }
   .top { box-shadow: 0 4px 12px rgba(30,58,138,.18); }
   .kpi, .item { box-shadow: 0 1px 2px rgba(0,0,0,.05); }
   .item { border-radius: 14px; padding: 12px 14px; }
@@ -118,6 +119,7 @@ var RQ = {};
 var OPEN = {};
 var OWN = {};
 var HIST = {};
+var DELIV = {};
 var EXPORT = [];
 var SEL = ['fDiv', 'fCat', 'fBrand'];                      // cascade order
 var KEY = { fDiv: 'div', fCat: 'cat', fBrand: 'brand' };
@@ -212,6 +214,8 @@ function badges(r) {
     var cls = r.st === 'Resolved' ? 'tag-ok' : (r.st === 'Back in shortage' ? 'tag-back' : (r.st === 'New shortage' ? 'tag-new' : ''));
     h += '<span class="tag ' + cls + '">' + esc(r.st) + '</span>';
   }
+  var dl = DELIV[r.code];
+  if (dl) h += '<span class="tag tag-deliv">Delivered ' + esc(dl.date) + ' · ' + dl.qty + '</span>';
   if (r.trend === 'worse') h += '<span class="tag tag-worse">Shortage grew ' + r.prevDiff + ' → ' + r.diff + '</span>';
   if (r.trend === 'better') h += '<span class="tag tag-better">Shortage reduced ' + r.prevDiff + ' → ' + r.diff + '</span>';
   if (r.rq && r.rq.list[0] && r.rq.list[0].check) h += '<span class="tag">' + esc(r.rq.list[0].check) + '</span>';
@@ -325,6 +329,7 @@ function applyData(j) {
   REQ = j.req || {};
   OWN = j.owners || {};
   RQ = j.rq || {};
+  DELIV = j.deliv || {};
   ALL = (j.rows || []).map(function (a) {
     return { date: a[0], person: a[1], code: a[2], item: a[3], sys: a[4], actual: a[5], diff: a[6], div: a[7], cat: a[8], brand: a[9], raised: !!REQ[a[2]] || !!RQ[a[2]], rq: RQ[a[2]] || null, owner: OWN[a[2]] || '' };
   });
